@@ -1,0 +1,39 @@
+1. Identidad de NexaFarma
+NexaFarma es una marca ficticia para una demostración académica de una tienda virtual orientada a cuidado personal, higiene, botiquín general y dispositivos de bienestar. Eslogan: “Tu bienestar, más cerca.” No representa una farmacia real autorizada, no confirma registros sanitarios y no sustituye la valoración de un médico o farmacéutico.
+
+2. Alcance y seguridad sanitaria
+El catálogo inicial contiene artículos generales ilustrativos y no incluye medicamentos sujetos a fórmula. El panel permite marcar un producto como “requiere fórmula o validación profesional”; en ese estado se bloquea su compra online. Esta versión no implementa un proceso de validación de recetas, verificación farmacéutica ni dispensación. No agregues tratamientos, dosis, interacciones ni afirmaciones clínicas no verificadas al catálogo.
+El asistente y el chatbot no deben diagnosticar síntomas, recomendar medicamentos, indicar dosis, duración, combinaciones ni tratamientos. Para preguntas sanitarias individuales, remite a un médico o farmacéutico habilitado. Ante una urgencia, indica contactar los servicios locales de emergencia.
+
+3. Tecnologías
+Backend en Python con Flask. Base de datos SQLite. Interfaz HTML/Jinja, Bootstrap, CSS local y JavaScript. ReportLab se usa para generar comprobantes PDF. python-dotenv carga variables de configuración y requests conecta con proveedores externos cuando se habilitan.
+
+4. Catálogo inicial de demostración
+Categorías: Cuidado personal; Vitaminas y bienestar; Primeros auxilios; Higiene y protección; Cuidado de la piel; Maternidad y bebé; Dispositivos de salud; Nutrición y cuidado diario.
+El catálogo de ejemplo puede incluir gel antibacterial, curitas adhesivas, termómetro digital, protector solar FPS 50, tapabocas desechables, crema humectante, toallitas húmedas, botella reutilizable, gasas estériles, oxímetro de pulso, jabón líquido y bálsamo labial. Los precios están en pesos colombianos y son ilustrativos. La base de datos actual es la fuente de verdad: no inventes precio, stock ni productos activos.
+
+5. Funciones para clientes
+La persona puede buscar por nombre y categoría, ordenar productos, abrir una ficha, revisar descripción/precio/stock, añadir productos generales al carrito, cambiar cantidades, quitar artículos, guardar favoritos, crear una cuenta, iniciar sesión, completar un checkout, consultar pedidos y comprobantes y enviar un mensaje desde Contacto. Algunas acciones requieren sesión iniciada.
+
+6. Funciones para administración
+El panel permite consultar resumen de pedidos, catálogo y existencias; crear, editar, activar/desactivar o eliminar productos; administrar categorías, descuentos, pedidos, clientes, reseñas, mensajes, auditoría y ajustes; exportar pedidos CSV; probar correo; y revisar el estado de las integraciones. Las operaciones requieren una cuenta con rol administrador. No se debe publicar información de salud inventada ni presentar una propuesta del asistente como un cambio guardado.
+
+7. Pagos
+El proyecto contiene conectores para Wompi y Mercado Pago, pero por defecto Wompi está deshabilitado y los secretos se entregan vacíos. Transferencia es una opción informativa del flujo de demostración: configúrala de manera explícita antes de usarla en un comercio real. No declares un pago aprobado por una captura de pantalla o por retorno del navegador; el estado debe validarse en servidor y, cuando corresponda, con webhooks verificados. Prueba primero con credenciales sandbox.
+
+8. Correo y notificaciones
+La aplicación contiene plantillas de NexaFarma para bienvenida, restablecimiento de contraseña, confirmación de contacto, cambios de estado y comprobantes. Proveedores contemplados: Gmail API por HTTPS, SMTP y Resend. Rellena solo el proveedor que realmente configures y prueba el envío desde Administración → Configuración. Que exista código de integración no significa que el servicio esté conectado.
+
+9. Variables de entorno importantes
+SECRET_KEY: clave privada para las sesiones Flask.
+ADMIN_EMAIL y ADMIN_PASSWORD: datos propios usados para crear/actualizar el administrador al iniciar.
+BASE_URL: URL pública o local para generar enlaces.
+GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET y GOOGLE_OAUTH_REDIRECT_URI: inicio de sesión Google.
+WOMPI_PUBLIC_KEY, WOMPI_INTEGRITY_SECRET, WOMPI_EVENTS_SECRET y WOMPI_TEMPORARILY_UNAVAILABLE: pagos Wompi.
+MERCADOPAGO_ACCESS_TOKEN y MERCADOPAGO_WEBHOOK_SECRET: Mercado Pago.
+GMAIL_API_*, SMTP_* y RESEND_*: correo transaccional.
+GROQ_API_KEY, CHATBOT_MODEL y AGENT_MODEL: funciones generativas opcionales.
+No guardes secretos en el código, el repositorio, los manuales o mensajes de chat. Usa el archivo `.env` local, que no debe publicarse.
+
+10. Instalación y soporte
+Crea y activa `.venv`, instala `requirements.txt`, copia `.env.example` como `.env`, configura la clave de sesión y el administrador, y ejecuta `python app.py`. Abre http://127.0.0.1:5000. Si algo falla, revisa la consola de Python, la existencia del archivo `.env`, las dependencias y `/salud`. En caso de problema de proveedor externo, revisa la configuración y los logs sin imprimir tokens secretos.

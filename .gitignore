@@ -1,0 +1,26 @@
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+client_secret.json
+client_secret*.json
+*token*.json
+
+# Entornos y archivos temporales Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.log
+app.py.backup*
+
+# Bases de datos locales y sidecars
+nexafarma.db
+nexafarma.db-shm
+nexafarma.db-wal
+*.sqlite
+*.sqlite3
+
+# Archivos cargados desde administración
+static/uploads/*
+!static/uploads/.gitkeep
