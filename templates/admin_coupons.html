@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Cupones | Admin{% endblock %}
+{% block content %}
+<section class="container admin-shell">
+  <div class="admin-header"><div><span class="eyebrow">PROMOCIONES</span><h1>Cupones</h1><p class="muted">Crea, edita, activa o elimina códigos de descuento.</p></div></div>
+  <nav class="admin-nav"><a href="{{ url_for('admin') }}">Dashboard</a><a href="{{ url_for('admin_clients') }}">Clientes</a></nav>
+  <div class="admin-grid">
+    <section class="admin-card"><h2>Crear cupón</h2>
+      <form class="admin-form" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input class="field" name="code" placeholder="NEXAFARMA10" maxlength="40" pattern="[A-Za-z0-9_-]{3,40}" title="3 a 40 letras, números, guion o guion bajo">
+        <div class="form-grid"><label>Descuento (%)<input class="field" name="percent" type="number" min="1" max="100" required></label><label>Compra mínima (COP)<input class="field" name="min_purchase" type="number" min="0" value="0" required></label></div>
+        <div class="form-grid"><label>Usos máximos<input class="field" name="max_uses" type="number" min="1" max="1000000" value="1" required></label><label>Vencimiento<input class="field" name="expires_at" type="datetime-local"></label></div>
+        <button class="btn btn-primary" type="submit">Crear cupón</button>
+      </form>
+    </section>
+    <aside class="admin-card"><h2>Descuento de bienvenida</h2><p class="muted">Cada registro recibe automáticamente un código personal de {{ config.discount }}% válido durante 30 días.</p></aside>
+  </div>
+  <section class="admin-card" style="margin-top:18px"><div class="table-wrap"><table class="admin-table"><thead><tr><th>Código</th><th>Cliente</th><th>Descuento</th><th>Usos</th><th>Vence</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+  {% for c in coupons %}<tr>
+    <td><b>{{ c.code }}</b></td><td>{{ c.email or 'General' }}</td><td>{{ c.percent }}%</td><td>{{ c.uses_count }}/{{ c.max_uses }}</td><td>{{ c.expires_at[:10] if c.expires_at else '—' }}</td>
+    <td><span class="status-chip {{ 'green' if c.active and not c.used else 'red' }}">{{ 'Disponible' if c.active and not c.used else 'Inactivo/Usado' }}</span></td>
+    <td><div class="admin-actions">
+      <a class="btn btn-small" href="{{ url_for('admin_coupon_edit',cid=c.id) }}">Editar</a>
+      <form method="post" action="{{ url_for('admin_coupon_toggle',cid=c.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-small btn-soft" type="submit">{{ 'Desactivar' if c.active else 'Activar' }}</button></form>
+      <form method="post" action="{{ url_for('admin_coupon_delete',cid=c.id) }}" onsubmit="return confirm('¿Eliminar este cupón? Los pedidos previos conservarán su historial.')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="btn btn-small btn-danger" type="submit">Eliminar</button></form>
+    </div></td>
+  </tr>{% else %}<tr><td colspan="7">No hay cupones.</td></tr>{% endfor %}
+  </tbody></table></div></section>
+</section>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Copiloto IA | NexaFarma Admin{% endblock %}
+{% block content %}
+<section class="container admin-shell admin-agent-page">
+  <div class="admin-header"><div><span class="eyebrow">HERRAMIENTA ADMINISTRATIVA</span><h1>Copiloto IA</h1><p class="muted">Consulta el catálogo y prepara productos nuevos desde una conversación.</p></div><span class="status-chip {{ 'green' if agent_ai else 'yellow' }}">{{ 'Groq configurado' if agent_ai else 'IA no configurada' }}</span></div>
+  <nav class="admin-nav" aria-label="Administración"><a href="{{ url_for('admin') }}">Dashboard</a><a href="{{ url_for('admin_agent_page') }}" aria-current="page">Copiloto IA</a><a href="{{ url_for('admin_products') }}">Productos</a><a href="{{ url_for('admin_catalog') }}">Catálogo</a><a href="{{ url_for('admin_config') }}">Configuración</a></nav>
+  <div class="admin-agent-layout">
+    <section class="admin-card admin-agent-card">
+      <div class="admin-agent-heading"><div class="admin-agent-avatar" aria-hidden="true">✦</div><div><b>Copiloto NexaFarma</b><small>Consultas de tienda y preparación de productos</small></div><span class="agent-online-dot" aria-label="Disponible"></span></div>
+      <div id="adminAgentMessages" class="admin-agent-messages" aria-live="polite"><div class="admin-agent-message assistant">Hola. Puedo resumir la operación, buscar productos o preparar una propuesta nueva. Si propongo un producto, podrás editar sus datos antes de añadirlo.</div></div>
+      <div id="adminAgentStatus" class="admin-agent-status">{% if agent_ai %}IA lista · las acciones de catálogo requieren confirmación{% else %}Configura la clave Groq para activar el copiloto{% endif %}</div>
+      <div class="admin-agent-prompts"><button type="button" data-admin-agent-prompt="Dame un resumen actual de la tienda">Resumen de la tienda</button><button type="button" data-admin-agent-prompt="Busca productos de cuidado personal">Buscar productos</button><button type="button" data-admin-agent-prompt="Propón un producto nuevo: gel antibacterial de 250 ml, $8.900, stock 20, categoría Cuidado personal">Crear una propuesta</button></div>
+      <form id="adminAgentForm" class="admin-agent-input"><label class="sr-only" for="adminAgentInput">Instrucción para el copiloto</label><input id="adminAgentInput" maxlength="700" autocomplete="off" placeholder="Ej. Propón un artículo de cuidado personal…" {% if not agent_ai %}disabled{% endif %}><button type="submit" {% if not agent_ai %}disabled{% endif %} aria-label="Enviar instrucción">➤</button></form>
+      <p class="admin-agent-disclaimer">El copiloto no publica cambios por sí solo. Revisa nombre, precio, stock y categoría antes de crear el producto.</p>
+    </section>
+    <aside class="admin-agent-aside">
+      <section class="admin-card"><span class="eyebrow">LO QUE PUEDE HACER</span><h2>Asistencia con datos reales</h2><ul class="admin-agent-capabilities"><li>Consultar pedidos, pagos pendientes, productos activos y stock bajo.</li><li>Buscar productos existentes por nombre o descripción.</li><li>Preparar una propuesta de producto editable.</li><li>Crear el producto solo tras tu confirmación explícita.</li></ul></section>
+      <section id="adminProductDraft" class="admin-card admin-product-draft" hidden>
+        <span class="eyebrow">REVISIÓN REQUERIDA</span><h2>Propuesta de producto</h2><p class="muted">Edita lo necesario. El producto se publicará en el catálogo al confirmar.</p>
+        <form id="adminProductDraftForm" class="admin-form">
+          <label>Nombre<input class="field" name="name" maxlength="120" required></label>
+          <label>Descripción<textarea class="field" name="description" rows="3" maxlength="500" required></textarea></label>
+          <div class="form-grid"><label>Precio COP<input class="field" name="price" type="number" min="0" max="10000000" step="1" required></label><label>Stock inicial<input class="field" name="stock" type="number" min="0" max="10000" step="1" required></label></div>
+          <label>Categoría<select class="field" name="category_id" required><option value="">Elige una categoría</option>{% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}</select></label>
+          <label class="admin-agent-featured"><input type="checkbox" name="featured"> Marcar como destacado</label>
+          <button class="btn btn-primary" type="submit">Confirmar y añadir al catálogo</button>
+        </form>
+      </section>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static',filename='js/admin-agent.js') }}"></script>{% endblock %}

@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Editar {{ coupon.code }} | Admin{% endblock %}
+{% block content %}
+<section class="container admin-shell">
+  <div class="admin-header"><div><span class="eyebrow">PROMOCIONES</span><h1>Editar cupón</h1><p class="muted">Usos registrados: {{ coupon.uses_count }} de {{ coupon.max_uses }}.</p></div><a class="btn btn-outline" href="{{ url_for('admin_coupons') }}">← Volver a cupones</a></div>
+  <section class="admin-card" style="max-width:760px">
+    <form class="admin-form" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Código<input class="field" name="code" value="{{ coupon.code }}" maxlength="40" pattern="[A-Za-z0-9_-]{3,40}" required></label>
+      <div class="form-grid"><label>Descuento (%)<input class="field" name="percent" type="number" min="1" max="100" value="{{ coupon.percent }}" required></label><label>Compra mínima (COP)<input class="field" name="min_purchase" type="number" min="0" value="{{ coupon.min_purchase }}" required></label></div>
+      <div class="form-grid"><label>Usos máximos<input class="field" name="max_uses" type="number" min="{{ coupon.uses_count if coupon.uses_count > 0 else 1 }}" max="1000000" value="{{ coupon.max_uses }}" required></label><label>Vencimiento<input class="field" name="expires_at" type="datetime-local" value="{{ coupon.expires_at[:16] if coupon.expires_at else '' }}"></label></div>
+      <p class="muted">Los usos máximos no pueden quedar por debajo de los que ya se registraron.</p>
+      <button class="btn btn-primary" type="submit">Guardar cambios</button>
+    </form>
+  </section>
+</section>
+{% endblock %}

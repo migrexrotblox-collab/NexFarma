@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="description" content="NexaFarma — tienda virtual ficticia de cuidado personal, botiquín y bienestar.">
+  <meta name="theme-color" content="#f7fbfa">
+  <script>(function(){try{var saved=localStorage.getItem('nexafarma-theme');var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.dataset.theme=saved==='dark'||(!saved&&dark)?'dark':'light';}catch(_){document.documentElement.dataset.theme='light';}})();</script>
+  <title>{% block title %}NexaFarma | Salud y bienestar{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="{{ url_for('static',filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static',filename='css/pharmacy-theme.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="premium-store">
+<header class="site-header"><div class="header-inner">
+  <button class="icon-btn menu-toggle" id="mobileMenuToggle" type="button" aria-label="Abrir menú">☰</button>
+  <a class="brand" href="{{ url_for('home') }}" aria-label="NexaFarma, inicio"><img src="{{ url_for('static',filename='logo.svg') }}" alt="NexaFarma"></a>
+  <nav class="desktop-nav" aria-label="Navegación principal">
+    <a class="{% if request.endpoint == 'home' %}is-current{% endif %}" href="{{ url_for('home') }}">Inicio</a><a class="{% if request.endpoint in ['menu','product'] %}is-current{% endif %}" href="{{ url_for('menu') }}">Productos</a>
+    <a class="nav-agent-link{% if request.endpoint == 'agent_page' %} is-current{% endif %}" href="{{ url_for('agent_page') }}">✦ Asistente</a>
+    <a href="{{ url_for('about') }}">Nosotros</a><a href="{{ url_for('contact') }}">Contacto</a>
+    {% if user and user.is_admin %}<a href="{{ url_for('admin') }}">Administración</a>{% endif %}
+  </nav>
+  <div class="header-actions">
+    {% if user %}<a class="account-pill" href="{{ url_for('account') }}">Hola, {{ user.first_name }}</a><a class="icon-btn" href="{{ url_for('favorites_page') }}" aria-label="Favoritos" title="Favoritos">♡</a>
+      <form class="inline-form logout-form" method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="icon-btn" type="submit" aria-label="Cerrar sesión" title="Cerrar sesión">↪</button></form>
+    {% else %}<a class="account-pill" href="{{ url_for('login') }}">Entrar</a>{% endif %}
+    <button class="icon-btn" id="themeToggle" type="button" aria-label="Cambiar tema" title="Cambiar tema">◐</button>
+    <a class="cart-pill" href="{{ url_for('cart_view') }}" aria-label="Carrito">🛒 <span>{{ cart_count }}</span></a>
+  </div>
+</div>
+<nav id="mobileNav" class="mobile-nav" aria-label="Navegación móvil">
+  <a href="{{ url_for('home') }}">Inicio</a><a href="{{ url_for('menu') }}">Productos</a><a href="{{ url_for('agent_page') }}">Asistente</a><a href="{{ url_for('about') }}">Nosotros</a><a href="{{ url_for('contact') }}">Contacto</a>
+  {% if user %}<a href="{{ url_for('account') }}">Mi cuenta</a><a href="{{ url_for('order_history') }}">Mis pedidos</a><a href="{{ url_for('favorites_page') }}">Favoritos</a><form class="mobile-logout" method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">Cerrar sesión</button></form>{% else %}<a href="{{ url_for('login') }}">Iniciar sesión</a><a href="{{ url_for('register') }}">Crear cuenta</a>{% endif %}
+  {% if user and user.is_admin %}<a href="{{ url_for('admin') }}">Administración</a>{% endif %}
+</nav></header>
+{% if site_settings.get('store_status')=='closed' %}<div class="store-banner" role="status">🔒 La tienda está temporalmente cerrada. Puedes consultar el catálogo, pero las compras no deben continuar hasta su reapertura.</div>{% endif %}
+{% if not user %}<aside id="welcomeDiscountAnnouncement" class="welcome-discount-announcement" aria-label="Descuento de bienvenida"><span class="welcome-discount-sparkle" aria-hidden="true">✦</span><p><b>Regístrate y recibe {{ config.discount }}% de descuento de bienvenida.</b><small>Consulta las condiciones en tu cuenta y el checkout.</small></p><a class="btn btn-primary btn-small" href="{{ url_for('register') }}">Crear cuenta</a><button id="dismissWelcomeDiscount" class="welcome-discount-close" type="button" aria-label="Cerrar aviso">×</button></aside>{% endif %}
+<a class="skip-link" href="#main-content">Saltar al contenido principal</a>
+<main id="main-content">{% with messages=get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="flash {{ category }}" role="status">{{ message }}</div>{% endfor %}{% endwith %}{% block content %}{% endblock %}</main>
+{% if config.whatsapp %}<a class="wa" href="https://wa.me/{{ config.whatsapp }}?text=Hola%20NexaFarma%2C%20tengo%20una%20consulta%20sobre%20la%20tienda" target="_blank" rel="noopener noreferrer" aria-label="Hablar por WhatsApp">💬 WhatsApp</a>{% endif %}
+<section class="payment-trust container" aria-label="Medios de pago"><div class="payment-trust-copy"><span class="eyebrow">PAGO Y CONFIANZA</span><b>{% if mercadopago_enabled %}Checkout disponible con Mercado Pago{% elif wompi_enabled %}Checkout disponible con Wompi{% else %}Métodos de pago según configuración{% endif %}</b><small>{% if mercadopago_enabled %}El pago se procesa en el entorno de Mercado Pago configurado.{% elif wompi_enabled %}Los medios habilitados dependen de tu comercio.{% else %}Las credenciales de pagos online deben configurarse y probarse antes de producción.{% endif %}</small></div><div class="payment-trust-badges">{% if mercadopago_enabled %}<span>💳 Mercado Pago</span>{% elif wompi_enabled %}<span>💳 Pagos online</span>{% else %}<span>🏦 Transferencia</span>{% endif %}</div></section>
+<footer><div class="footer-main container">
+  <div><h3>{{ config.name }}</h3><p class="muted">Tienda virtual ficticia de productos generales de cuidado personal, botiquín y bienestar.</p></div>
+  <div><h3>Tienda</h3><a href="{{ url_for('menu') }}">Catálogo</a><a href="{{ url_for('cart_view') }}">Carrito</a>{% if user %}<a href="{{ url_for('favorites_page') }}">Favoritos</a>{% endif %}</div>
+  <div><h3>Ayuda y políticas</h3><a href="{{ url_for('contact') }}">Contacto</a><a href="{{ url_for('about') }}">Nosotros</a><a href="{{ url_for('privacy_policy') }}">Privacidad</a><a href="{{ url_for('cookie_policy') }}">Cookies</a><a href="{{ url_for('terms_policy') }}">Condiciones de compra</a><a href="#" id="cookiePreferencesOpen">Preferencias de cookies</a>{% if config.whatsapp %}<a href="https://wa.me/{{ config.whatsapp }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>{% endif %}<a href="https://www.sic.gov.co/" target="_blank" rel="noopener noreferrer">SIC · Protección al consumidor</a></div>
+  <div><h3>Síguenos</h3><a href="{{ config.instagram }}" target="_blank" rel="noopener">Instagram</a><a href="{{ config.tiktok }}" target="_blank" rel="noopener">TikTok</a><a href="{{ config.facebook }}" target="_blank" rel="noopener">Facebook</a></div>
+</div><div class="footer-bottom"><div class="container">© {{ year }} {{ config.name }} · {{ config.address }}{% if config.business_phone %} · {{ config.business_phone }}{% endif %}</div></div>
+<div class="health-disclaimer container">Proyecto académico con marca ficticia. El catálogo no es asesoría médica ni confirma la autorización sanitaria de productos. Consulta a un profesional de salud para decisiones clínicas.</div></footer>
+<section id="cookieConsentBanner" class="cookie-consent" role="dialog" aria-label="Preferencias de cookies" aria-describedby="cookieConsentText" hidden>
+  <div class="cookie-consent-copy"><span class="eyebrow">TU PRIVACIDAD</span><h2>Preferencias de cookies</h2><p id="cookieConsentText">Usamos almacenamiento necesario para la sesión, el carrito y la seguridad. Las categorías opcionales no activan rastreadores en la versión actual. <a href="{{ url_for('cookie_policy') }}">Lee la política de cookies</a>.</p></div>
+  <div id="cookiePreferences" class="cookie-options" hidden><label><input type="checkbox" checked disabled> Necesarias <small>Siempre activas</small></label><label><input id="cookieAnalytics" type="checkbox"> Analítica <small>No hay analítica activa en esta versión</small></label><label><input id="cookieMarketing" type="checkbox"> Marketing <small>No hay cookies publicitarias activas</small></label></div>
+  <div class="cookie-consent-actions"><button id="cookieAcceptNecessary" class="btn btn-outline" type="button">Solo necesarias</button><button id="cookieCustomize" class="btn btn-soft" type="button" aria-expanded="false">Configurar</button><button id="cookieAcceptAll" class="btn btn-primary" type="button">Aceptar todas</button><button id="cookieBack" class="btn btn-outline" type="button" hidden>Volver</button><button id="cookieSave" class="btn btn-primary" type="button" hidden>Guardar preferencias</button></div>
+</section>
+<div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+<div id="agentWidget" class="agent-widget" data-agent-mode="widget"><button id="agentWidgetToggle" class="agent-widget-toggle" type="button" aria-expanded="false" aria-controls="agentWidgetPanel"><span aria-hidden="true">✚</span><span>Asistente</span></button><section id="agentWidgetPanel" class="agent-window" aria-label="Asistente de NexaFarma" hidden><header class="agent-header"><div class="agent-avatar" aria-hidden="true">✚</div><div class="agent-header-copy"><b>Asistente NexaFarma</b><small>Ayuda para usar la tienda</small></div><button id="agentWidgetClose" class="agent-reset" type="button" aria-label="Cerrar asistente">×</button></header><div id="agentMessagesWidget" class="agent-messages" aria-live="polite"></div><div id="agentStatusWidget" class="agent-status">Catálogo y ayuda general</div><form id="agentFormWidget" class="agent-input"><label class="sr-only" for="agentInputWidget">Escribe tu consulta</label><input id="agentInputWidget" maxlength="700" placeholder="¿Qué necesitas saber?" autocomplete="off"><button type="submit" aria-label="Enviar">➤</button></form></section></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous" defer></script>
+<script src="{{ url_for('static',filename='js/main.js') }}"></script><script src="{{ url_for('static',filename='js/cookie-consent.js') }}"></script><script src="{{ url_for('static',filename='js/chatbot.js') }}"></script><script src="{{ url_for('static',filename='js/agent.js') }}"></script>
+{% if not user %}<script>(()=>{const b=document.getElementById('welcomeDiscountAnnouncement'),c=document.getElementById('dismissWelcomeDiscount');if(!b||!c)return;try{if(localStorage.getItem('nexafarma-welcome-dismissed')==='1')b.hidden=true;}catch(_){}c.addEventListener('click',()=>{b.hidden=true;try{localStorage.setItem('nexafarma-welcome-dismissed','1');}catch(_){}});})();</script>{% endif %}
+{% block scripts %}{% endblock %}
+</body></html>

@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Checkout | NexaFarma{% endblock %}
+{% block content %}
+<section class="container section-pad">
+  <div class="section-head"><div><span class="eyebrow">CHECKOUT SEGURO</span><h1>Finaliza tu pedido</h1><p class="muted">Tus precios se validan nuevamente antes de crear la orden.</p></div></div>
+  <form class="checkout-layout" method="post" action="{{ url_for('create_order') }}" id="checkoutForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <section>
+      <div class="checkout-step">
+        <h2>1. Datos de entrega</h2>
+        <div class="form-stack">
+          <div class="form-grid">
+            <div class="form-field"><label>Nombre completo</label><input class="field" name="customer_name" value="{{ form_data.get('customer_name') or (user.first_name ~ ' ' ~ user.last_name) }}" required></div>
+            <div class="form-field"><label>Teléfono</label><input class="field" name="phone" value="{{ form_data.get('phone') or user.phone or '' }}" required></div>
+          </div>
+          <div class="radio-grid"><label class="radio-card"><input type="radio" name="delivery_method" value="domicilio" {% if form_data.get('delivery_method','domicilio')=='domicilio' %}checked{% endif %}> Domicilio</label><label class="radio-card"><input type="radio" name="delivery_method" value="recoger" {% if form_data.get('delivery_method')=='recoger' %}checked{% endif %}> Recoger en tienda</label></div>
+          <div class="form-grid">
+            <div class="form-field"><label>Dirección</label><input class="field" name="address" value="{{ form_data.get('address') or user.address or '' }}" required></div>
+            <div class="form-field"><label>Barrio</label><input class="field" name="neighborhood" value="{{ form_data.get('neighborhood') or user.neighborhood or '' }}"></div>
+          </div>
+          <div class="form-grid">
+            <div class="form-field"><label>Ciudad</label><input class="field" name="city" value="{{ form_data.get('city') or user.city or 'Barranquilla' }}"></div>
+            <div class="form-field"><label>Referencia</label><input class="field" name="reference" value="{{ form_data.get('reference') or '' }}" placeholder="Casa, edificio, portería…"></div>
+          </div>
+          <div class="form-field"><label>Notas del pedido</label><textarea class="field" name="notes" rows="3" placeholder="Indicaciones logísticas del pedido (sin datos médicos sensibles)…">{{ form_data.get('notes') or '' }}</textarea></div>
+        </div>
+      </div>
+      <div class="checkout-step"><h2>2. Cupón</h2><div class="form-grid"><input class="field" name="coupon" id="coupon" value="{{ form_data.get('coupon') or (coupon.code if coupon else '') }}" placeholder="Código de descuento"><button class="btn btn-soft" id="couponBtn" type="button">Validar cupón</button></div><p id="couponMsg" class="muted" aria-live="polite"></p></div>
+      <div class="checkout-step">
+        <h2>3. Método de pago</h2>
+        <div class="radio-grid">
+          {% if wompi_enabled and not wompi_temporarily_unavailable %}<label class="radio-card"><input type="radio" name="payment_method" value="wompi" required {% if form_data.get('payment_method')=='wompi' %}checked{% endif %}> <b>💳 Pagar online con Wompi</b><small class="muted" style="display:block;margin:5px 0 0 24px">Se habilita solo con credenciales y notificaciones verificadas.</small></label>
+          {% elif wompi_temporarily_unavailable %}<div class="radio-card payment-unavailable"><b>💳 Wompi temporalmente deshabilitado</b><small class="muted" style="display:block;margin:5px 0 0">Se debe habilitar tras comprobar las claves y los webhooks del comercio.</small></div>{% endif %}
+          {% if mercadopago_enabled %}<label class="radio-card"><input type="radio" name="payment_method" value="mercadopago" required {% if form_data.get('payment_method')=='mercadopago' or (not form_data.get('payment_method') and not wompi_enabled) %}checked{% endif %}> <b>💳 Pagar online con Mercado Pago</b><small class="muted" style="display:block;margin:5px 0 0 24px">Checkout alojado del proveedor configurado.</small></label>{% endif %}
+          <label class="radio-card"><input type="radio" name="payment_method" value="transferencia" required {% if form_data.get('payment_method')=='transferencia' or (not mercadopago_enabled and not wompi_enabled and not form_data.get('payment_method')) %}checked{% endif %}> 🏦 Transferencia bancaria</label>
+          {% if delivered_order_count >= 10 %}<label class="radio-card"><input type="radio" name="payment_method" value="contra_entrega" required {% if form_data.get('payment_method')=='contra_entrega' %}checked{% endif %}> 💵 Contra entrega</label>{% else %}<div class="radio-card payment-unavailable"><b>💵 Contra entrega aún no disponible</b><small class="muted" style="display:block;margin:5px 0 0">Se habilita tras completar 10 pedidos. Llevas {{ delivered_order_count }}/10.</small></div>{% endif %}
+        </div>
+        {% if not mercadopago_enabled and not wompi_enabled %}<p class="notice">Los pagos en línea todavía no están habilitados. Puedes registrar un pedido de prueba mediante transferencia, sin incluir datos bancarios en el sitio.</p>{% endif %}
+      </div>
+      <label class="checkout-legal-consent"><input type="checkbox" name="accept_terms" value="yes" required><span>He leído y acepto las <a href="{{ url_for('terms_policy') }}" target="_blank" rel="noopener">condiciones de compra</a> y revisé el <a href="{{ url_for('privacy_policy') }}" target="_blank" rel="noopener">aviso de privacidad</a>.</span></label>
+      <button class="btn btn-primary btn-large" type="submit">Crear pedido y continuar →</button>
+    </section>
+    <aside class="summary-card"><span class="eyebrow">RESUMEN</span>{% for i in items %}<div class="summary-row"><span>{{ i.qty }} × {{ i.name }}</span><b>{{ (i.unit*i.qty)|money }}</b></div>{% endfor %}<div class="summary-row"><span>Subtotal</span><b>{{ subtotal|money }}</b></div><div class="summary-row"><span>Descuento</span><b id="discountValue">-{{ discount|money }}</b></div><div class="summary-row"><span>Domicilio</span><b id="deliveryValue">{{ delivery|money }}</b></div><div class="summary-total summary-row"><span>Total</span><b id="totalValue">{{ (subtotal-discount+delivery)|money }}</b></div></aside>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const couponBtn=document.getElementById('couponBtn');
+  const couponInput=document.getElementById('coupon');
+  const couponMsg=document.getElementById('couponMsg');
+  async function validateCoupon(){
+    if(!couponInput) return;
+    const body=new URLSearchParams();
+    body.set('coupon',couponInput.value.trim());
+    body.set('delivery_method',document.querySelector('input[name="delivery_method"]:checked')?.value||'domicilio');
+    const csrf=document.querySelector('meta[name="csrf-token"]')?.content||'';
+    if(couponBtn){couponBtn.disabled=true;couponBtn.textContent='Validando…';}
+    if(couponMsg) couponMsg.textContent='Comprobando el descuento…';
+    try{
+      const response=await fetch('{{ url_for('api_coupon_validate') }}',{method:'POST',headers:{'X-CSRFToken':csrf,'X-Requested-With':'XMLHttpRequest'},body});
+      const data=await response.json();
+      if(!response.ok) throw new Error(data.message||'No se pudo validar el cupón.');
+      if(couponMsg) couponMsg.textContent=data.message||'Resumen actualizado.';
+      document.getElementById('discountValue').textContent='-'+window.nexafarmaFormatCOP(data.discount);
+      document.getElementById('deliveryValue').textContent=window.nexafarmaFormatCOP(data.delivery);
+      document.getElementById('totalValue').textContent=window.nexafarmaFormatCOP(data.total);
+    }catch(_){
+      if(couponMsg) couponMsg.textContent='No pudimos validar el cupón. Revisa tu conexión e inténtalo de nuevo.';
+    }finally{
+      if(couponBtn){couponBtn.disabled=false;couponBtn.textContent='Validar cupón';}
+    }
+  }
+  couponBtn?.addEventListener('click',validateCoupon);
+  document.querySelectorAll('input[name="delivery_method"]').forEach(radio=>radio.addEventListener('change',validateCoupon));
+})();
+</script>
+{% endblock %}

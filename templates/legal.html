@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}{{ policy.title }} | {{ config.name }}{% endblock %}
+{% block content %}
+<section class="container legal-page">
+  <header class="legal-hero"><span class="eyebrow">{{ policy.eyebrow }}</span><h1>{{ policy.title }}</h1><p>{{ policy.intro }}</p></header>
+  <div class="legal-layout">
+    <nav class="legal-nav" aria-label="Políticas de NexaFarma"><b>Políticas de la tienda</b><a href="{{ url_for('privacy_policy') }}">Privacidad</a><a href="{{ url_for('cookie_policy') }}">Cookies</a><a href="{{ url_for('terms_policy') }}">Condiciones de compra</a></nav>
+    <article class="legal-content">
+      {% for section in policy.sections %}<section class="legal-section"><h2>{{ section.title }}</h2>{% if section.text %}<p>{{ section.text }}</p>{% endif %}{% if section.bullets %}<ul>{% for item in section.bullets %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}</section>{% endfor %}
+      <div class="legal-contact"><b>¿Necesitas ayuda?</b><p>Escríbenos desde <a href="{{ url_for('contact') }}">Contacto</a> o revisa nuestros canales de atención.</p><a class="btn btn-soft" href="{{ url_for('contact') }}">Contactar a NexaFarma</a></div>
+    </article>
+  </div>
+</section>
+{% endblock %}

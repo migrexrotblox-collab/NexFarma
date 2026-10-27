@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Panel administrativo | NexaFarma{% endblock %}
+{% block content %}
+<section class="container admin-shell admin-dashboard">
+  <div class="admin-header">
+    <div><span class="eyebrow">CENTRO DE OPERACIONES</span><h1>Dashboard</h1><p class="muted">Control de ventas, pedidos, inventario y atención.</p></div>
+    <a class="btn btn-primary" href="{{ url_for('export_orders') }}">Exportar pedidos CSV</a>
+  </div>
+  {% if store_status != 'open' %}<div class="admin-alert" role="status"><b>La tienda está cerrada.</b> Revisa la configuración antes de recibir nuevos pedidos. <a href="{{ url_for('admin_config') }}">Abrir configuración</a></div>{% endif %}
+  <nav class="admin-nav" aria-label="Administración">
+    <a href="{{ url_for('admin') }}" aria-current="page">Dashboard</a><a href="{{ url_for('admin_agent_page') }}">Copiloto IA</a><a href="{{ url_for('admin_products') }}">Productos</a><a href="{{ url_for('admin_orders') }}">Pedidos</a><a href="{{ url_for('admin_clients') }}">Clientes</a><a href="{{ url_for('admin_coupons') }}">Cupones</a><a href="{{ url_for('admin_catalog') }}">Catálogo</a><a href="{{ url_for('admin_messages') }}">Mensajes</a><a href="{{ url_for('admin_reviews') }}">Reseñas</a><a href="{{ url_for('admin_audit') }}">Auditoría</a><a href="{{ url_for('admin_config') }}">Configuración</a>
+  </nav>
+  <div class="stats-grid admin-stats">
+    <a class="stat-card" href="{{ url_for('admin_orders') }}"><span class="stat-label">Ventas aprobadas hoy</span><strong class="stat-value">{{ stats.sales_today|money }}</strong><small>Pagos confirmados · Colombia</small></a>
+    <a class="stat-card" href="{{ url_for('admin_orders') }}"><span class="stat-label">Pedidos de hoy</span><strong class="stat-value">{{ stats.orders_today }}</strong><small>Pedidos no cancelados</small></a>
+    <a class="stat-card stat-highlight" href="{{ url_for('admin_orders', status='received') }}"><span class="stat-label">Nuevos por gestionar</span><strong class="stat-value">{{ stats.new_orders }}</strong><small>{{ stats.active_orders }} pedidos activos</small></a>
+    <a class="stat-card" href="{{ url_for('admin_orders', payment='pending') }}"><span class="stat-label">Pagos pendientes</span><strong class="stat-value">{{ stats.unpaid }}</strong><small>Revisar conciliación</small></a>
+    <a class="stat-card" href="{{ url_for('admin_products') }}"><span class="stat-label">Productos con stock bajo</span><strong class="stat-value">{{ stats.low_stock }}</strong><small>Umbral: 5 unidades</small></a>
+    <a class="stat-card" href="{{ url_for('admin_messages') }}"><span class="stat-label">Mensajes nuevos</span><strong class="stat-value">{{ stats.messages }}</strong><small>Atención pendiente</small></a>
+    <div class="stat-card"><span class="stat-label">Clientes registrados</span><strong class="stat-value">{{ stats.clients }}</strong><small>{{ stats.orders }} pedidos en el historial</small></div>
+    <div class="stat-card"><span class="stat-label">Ventas aprobadas este mes</span><strong class="stat-value">{{ stats.sales_month|money }}</strong><small>Pagos confirmados</small></div>
+  </div>
+  <section class="admin-card admin-shortcuts" aria-label="Acciones rápidas"><div><span class="eyebrow">ACCESO RÁPIDO</span><h2>Operación diaria</h2></div><div class="admin-shortcut-links"><a class="btn btn-primary" href="{{ url_for('admin_orders', status='received') }}">Gestionar pedidos nuevos{% if stats.new_orders %} <span class="shortcut-count">{{ stats.new_orders }}</span>{% endif %}</a><a class="btn btn-soft" href="{{ url_for('admin_orders') }}">Ver todos los pedidos</a><a class="btn btn-soft" href="{{ url_for('admin_products') }}">Actualizar inventario</a><a class="btn btn-soft" href="{{ url_for('admin_messages') }}">Atender mensajes</a></div></section>
+  <div class="admin-grid admin-dashboard-grid">
+    <section class="admin-card"><div class="admin-card-heading"><div><span class="eyebrow">INGRESOS</span><h2>Ventas mensuales</h2></div><span class="muted">Solo pagos aprobados</span></div>
+      {% if monthly_sales %}<div class="chart-bars" role="img" aria-label="Ventas aprobadas por mes">{% for row in monthly_sales|reverse %}{% set bar_height = (row.total * 100 / max_monthly_sales) if max_monthly_sales else 0 %}<div class="chart-col"><b>{{ row.total|money }}</b><div class="chart-bar"><span style="height:{{ [bar_height, 100]|min }}%"></span></div><small>{{ row.label }}</small></div>{% endfor %}</div>{% else %}<p class="muted">Todavía no hay pagos aprobados para mostrar.</p>{% endif %}
+    </section>
+    <section class="admin-card"><div class="admin-card-heading"><div><span class="eyebrow">PRODUCTOS</span><h2>Más vendidos</h2></div><a href="{{ url_for('admin_products') }}">Ver inventario →</a></div><div class="admin-ranking">{% for row in top_products %}<div class="info-row"><span>{{ loop.index }}. {{ row.name }}</span><b>{{ row.quantity }} uds.</b></div>{% else %}<p class="muted">Todavía no hay ventas registradas.</p>{% endfor %}</div></section>
+  </div>
+  <div class="admin-grid admin-dashboard-grid">
+    <section class="admin-card"><div class="admin-card-heading"><div><span class="eyebrow">ÚLTIMA ACTIVIDAD</span><h2>Pedidos recientes</h2></div><a href="{{ url_for('admin_orders') }}">Ver todos →</a></div><div class="table-wrap"><table class="admin-table"><thead><tr><th>Pedido</th><th>Cliente</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead><tbody>{% for o in recent %}<tr><td><a class="section-link" href="{{ url_for('admin_order_detail',oid=o.id) }}">#{{ o.order_no }}</a><small class="muted" style="display:block">{{ o.created_at[:16].replace('T',' ') }}</small></td><td>{{ o.customer_name }}</td><td><b>{{ o.total|money }}</b></td><td>{{ payment_status_es.get(o.payment_status,o.payment_status) }}</td><td><span class="status-chip">{{ status_es.get(o.status,o.status) }}</span></td></tr>{% else %}<tr><td colspan="5">No hay pedidos.</td></tr>{% endfor %}</tbody></table></div></section>
+    <section class="admin-card"><div class="admin-card-heading"><div><span class="eyebrow">INVENTARIO</span><h2>Stock crítico</h2></div><span class="muted">{{ stats.low_stock }} productos</span></div>{% for p in low_stock %}<div class="info-row"><span>{{ p.name }}</span><b class="stock-low">{{ p.stock }} uds.</b></div>{% else %}<p class="muted">No hay productos con stock crítico.</p>{% endfor %}<a class="btn btn-soft" style="margin-top:12px" href="{{ url_for('admin_products') }}">Gestionar inventario</a></section>
+  </div>
+</section>
+{% endblock %}
