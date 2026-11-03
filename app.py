@@ -518,6 +518,24 @@ def init_db():
                 (cat.get(category), name, desc, price, featured, stock, now_iso()),
             )
 
+    # Marcas y presentaciones reales como referencias de catálogo; el inventario de esta demo es ilustrativo.
+    cat = {r["name"]: r["id"] for r in conn.execute("SELECT id,name FROM categories")}
+    reference_products = [
+        ("Cuidado de la piel", "Protector Solar Eucerin Sun Oil Control FPS 50+ 50 ml", "Protector solar facial Eucerin Sun Oil Control, frasco de 50 ml. Precio de referencia aproximado en Colombia; puede variar por ciudad y promociones.", 146650, "uploads/eucerin-sun-oil-control-50.webp"),
+        ("Cuidado de la piel", "Crema Nivea Creme 100 ml", "Crema humectante Nivea Creme en frasco de 100 ml. Precio de referencia aproximado en Colombia; puede variar por ciudad y promociones.", 40550, "uploads/nivea-creme-100.webp"),
+        ("Higiene y protección", "Toallas Húmedas Huggies Limpieza Efectiva x 96 und", "Toallas húmedas Huggies Limpieza Efectiva, paquete de 96 unidades. Precio de referencia aproximado en Colombia; puede variar por ciudad y promociones.", 13950, "uploads/huggies-limpieza-efectiva-96.webp"),
+        ("Cuidado personal", "Cepillos Oral-B Clean Complete x 3 und", "Paquete Oral-B Clean Complete con 3 cepillos dentales. Precio de referencia aproximado en Colombia; puede variar por ciudad y promociones.", 18500, "uploads/oralb-clean-complete-3.webp"),
+        ("Cuidado personal", "Crema Dental Colgate Triple Acción x 3 und", "Paquete Colgate Triple Acción con 3 tubos de 75 ml. Precio de referencia aproximado en Colombia; puede variar por ciudad y promociones.", 20200, "uploads/colgate-triple-accion-3.webp"),
+    ]
+    for category, name, description, price, image in reference_products:
+        exists = conn.execute("SELECT 1 FROM products WHERE name=?", (name,)).fetchone()
+        if not exists:
+            conn.execute(
+                """INSERT INTO products(category_id,name,description,price,image,active,featured,stock,requires_prescription,created_at)
+                   VALUES(?,?,?,?,?,1,1,24,0,?)""",
+                (cat.get(category), name, description, price, image, now_iso()),
+            )
+
     defaults = {
         "business_notice": "Catálogo de cuidado personal y bienestar. Consulta a un profesional de salud para orientación individualizada.",
         "store_status": "open",
@@ -3142,6 +3160,13 @@ def chatbot_knowledge_text(query=None):
     return "\n\n".join(selected)
 
 
+def _agent_norm(value):
+    """Normaliza texto para comparar consultas y nombres sin depender de tildes o signos."""
+    normalized = unicodedata.normalize("NFKD", str(value or ""))
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii").lower()
+    return re.sub(r"[^a-z0-9]+", " ", ascii_text).strip()
+
+
 def chatbot_system_prompt(message=""):
     catalog, size_text, topping_text = chatbot_catalog_text()
     knowledge = chatbot_knowledge_text(message)
@@ -3216,6 +3241,100 @@ def local_chatbot_reply(message, history=None):
     if any(word in norm for word in ["contacto", "whatsapp", "hablar", "ayuda"]):
         return (f"Puedes escribirnos por WhatsApp: https://wa.me/{CONFIG['whatsapp']} o utilizar el formulario de Contacto.") if CONFIG["whatsapp"] else "El WhatsApp aún no está configurado. Mientras tanto, utiliza el formulario de Contacto de la tienda."
     return "Puedo ayudarte a navegar el catálogo general, revisar precios, inventario, domicilios, pagos, cuentas y pedidos. No puedo indicar medicamentos ni tratamientos; para eso consulta con un profesional de salud."
+
+
+def _chatbot_groq_reply(message, history):
+    messages = [{"role": "system", "content": chatbot_system_prompt(message)}]
+    for entry in (history or [])[-6:]:
+        if not isinstance(entry, dict):
+            continue
+        role = entry.get("role")
+        content = str(entry.get("content") or "")[:450]
+        if role in {"user", "assistant"} and content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": str(message)[:700]})
+    payload = {
+        "model": CHATBOT_MODEL,
+        "messages": messages,
+        "temperature": 0.2,
+        "max_completion_tokens": 700,
+    }
+    if "gpt-oss" in CHATBOT_MODEL.lower():
+        payload["reasoning_effort"] = "low"
+    try:
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}"},
+            json=payload,
+            timeout=(5, 25),
+        )
+    except requests.RequestException as exc:
+        app.logger.warning("No se pudo conectar con Groq para el chatbot (%s).", type(exc).__name__)
+        raise RuntimeError("No se pudo conectar con el proveedor de IA") from exc
+    if response.status_code != 200:
+        provider_error = ""
+        try:
+            error_payload = response.json()
+            provider_error = str((error_payload.get("error") or {}).get("message") or "")[:180]
+        except (ValueError, AttributeError):
+            pass
+        app.logger.warning(
+            "Groq chatbot respondió HTTP %s%s",
+            response.status_code,
+            f": {provider_error}" if provider_error else "",
+        )
+        raise RuntimeError(f"Groq HTTP {response.status_code}")
+    try:
+        choices = (response.json().get("choices") or [])
+    except (ValueError, AttributeError) as exc:
+        raise RuntimeError("Groq devolvió JSON inválido") from exc
+    reply = str((choices[0].get("message") or {}).get("content") or "").strip() if choices else ""
+    if not reply:
+        raise RuntimeError("Groq devolvió una respuesta vacía al chatbot")
+    return reply
+
+
+@app.post("/api/chat")
+def api_chat():
+    data = request.get_json(silent=True) or {}
+    message = str(data.get("message") or "").strip()[:700]
+    if not message:
+        return jsonify({"error": "Mensaje vacío", "mode": "invalid"}), 400
+    history = session.get("chatbot_history", [])
+    history = history if isinstance(history, list) else []
+    # Las consultas sobre síntomas o tratamientos siempre usan el resguardo local.
+    if _agent_is_medical_advice_request(message):
+        reply = local_chatbot_reply(message, history)
+        mode = "local-safety"
+        ai_error = False
+    elif GROQ_API_KEY:
+        try:
+            reply = _chatbot_groq_reply(message, history)
+            mode = "groq-rest"
+            ai_error = False
+        except Exception as exc:
+            app.logger.warning("Chatbot IA no disponible (%s); se usará ayuda local.", type(exc).__name__)
+            reply = local_chatbot_reply(message, history)
+            mode = "local-fallback"
+            ai_error = True
+    else:
+        reply = local_chatbot_reply(message, history)
+        mode = "local-only"
+        ai_error = False
+    history.extend([{"role": "user", "content": message}, {"role": "assistant", "content": reply}])
+    session["chatbot_history"] = [
+        {"role": item.get("role"), "content": str(item.get("content") or "")[:450]}
+        for item in history[-8:]
+        if isinstance(item, dict) and item.get("role") in {"user", "assistant"}
+    ]
+    session.modified = True
+    return jsonify({"reply": reply, "mode": mode, "ai_error": ai_error, "ai_configured": bool(GROQ_API_KEY)})
+
+
+@app.post("/api/chat/reset")
+def api_chat_reset():
+    session.pop("chatbot_history", None)
+    return jsonify({"ok": True})
 
 
 def _agent_search_products(args):
