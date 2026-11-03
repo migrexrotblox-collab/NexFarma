@@ -29,6 +29,9 @@
       panel.classList.toggle('hidden', !opened);
       toggle?.setAttribute('aria-expanded', String(opened));
       if (opened) {
+        const chatbotWindow = document.getElementById('chatbotWindow');
+        if (chatbotWindow) chatbotWindow.classList.add('hidden');
+        document.getElementById('chatbotToggle')?.setAttribute('aria-expanded', 'false');
         greet();
         input.focus();
       }
