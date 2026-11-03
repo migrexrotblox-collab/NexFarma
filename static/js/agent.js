@@ -85,7 +85,7 @@
         }
         status.textContent = statusFor(data);
         add(data.reply || 'No recibí una respuesta completa. Inténtalo de nuevo.', 'bot');
-        if (data.ai_error) add('Aviso: el proveedor de IA no respondió y se utilizó la ayuda local. Revisa GROQ_API_KEY solo si deseas activar esta integración.', 'bot');
+        if (data.ai_error) add('Aviso: Groq no respondió y se utilizó la ayuda local. Si vuelve a ocurrir, revisa la conexión, la cuota del proveedor y el registro técnico del servidor.', 'bot');
       } catch (_) {
         working.remove();
         status.textContent = 'Sin conexión con el servidor';
